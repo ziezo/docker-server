@@ -1,0 +1,57 @@
+debug = false
+
+checkNewVersion = false
+
+#"DEBUG", "INFO", "WARN", "ERROR", "FATAL", "PANIC"
+logLevel = "ERROR"
+
+defaultEntryPoints = ["http", "https"]
+
+[web]
+address = ":8080"
+# auth is set with labels in docker-compose.yml
+#  [web.auth.basic]
+#  users = ["test:$apr1$H6uskkkW$IgXLP6ewTrSuBkTrqE8wj/"]
+
+[docker]
+domain = "docker.local"
+watch = true
+exposedbydefault = false
+
+
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+###    [entryPoints.http.redirect]
+###    entryPoint = "https"
+  [entryPoints.https]
+  address = ":443"
+    [entryPoints.https.tls]
+###      [[entryPoints.https.tls.certificates]]
+###      certFile = "/cert/fullchain.pem"
+###      keyFile = "/cert/privkey.pem"
+
+[acme]
+# TODO add your email here
+email = "$EMAIL"
+storage = "acme.json"
+entryPoint = "https"
+  #use HTTP Challenge
+  [acme.httpChallenge]
+  entryPoint = "http"
+
+#set to true to generate certs from docker labels (in addition to certs defined below)
+onHostRule = true
+
+#Create single certificate for used services
+[[acme.domains]]
+main= "$DOMAIN"
+sans=[
+"www.$DOMAIN",
+"pma.$DOMAIN",
+"traefik.$DOMAIN",
+"cloud.$DOMAIN",
+"mail.$DOMAIN"
+]
+
+

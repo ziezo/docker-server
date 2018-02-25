@@ -1,0 +1,4 @@
+acme-cert-all-dump.py  creates /cert/path/domain1.com.cert /cert/path/domain2.com.cert
+acme-cert-dump.py creates fullchain.pem and privkey.pem
+ 
+

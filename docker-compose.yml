@@ -1,0 +1,167 @@
+version: "2.3"
+services:
+
+###################################################################################
+# poste.io:1.0.7
+###################################################################################
+  mail:
+    container_name: mail
+    hostname: mail.${DOMAIN}
+    image: ziezo/poste.io
+    volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - ./mail/vol/data:/data
+    #spamassasin bayes database files
+    - ./mail/vol/sa-learn:/tmp/.spamassassin
+    #spamassasin config  
+    - ./mail/conf/local.cf:/etc/spamassassin/local.cf:ro
+    environment:
+    - "HTTPS=OFF"
+    labels:
+      traefik.backend: "mail"
+      traefik.frontend.rule: "Host:mail.${DOMAIN}"
+      #1=low, 100=high
+      traefik.frontend.priority: "100"
+      traefik.frontend.entryPoints: "https,http"
+      traefik.frontend.headers.SSLRedirect: "true"
+      traefik.port: "80"
+    ports:
+    - "${IP}:25:25"
+    - "${IP}:143:143"
+    - "${IP}:465:465"
+    - "${IP}:587:587"
+    - "${IP}:993:993"
+    restart: always
+
+
+###################################################################################
+# traefik
+###################################################################################
+  traefik:
+    container_name: traefik
+    image: traefik:1.5
+    command: --docker
+    ports:
+    - "${IP}:80:80"
+    - "${IP}:443:443"
+    volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+    - ./traefik/conf/traefik.toml:/traefik.toml:ro
+    - ./traefik/vol/acme.json:/acme.json
+    labels:
+      traefik.backend: "traefik"
+      traefik.frontend.entryPoints: "http,https"
+      traefik.frontend.headers.SSLRedirect: "true"
+      traefik.frontend.rule: "Host:traefik.${DOMAIN}"
+      #1=low, 100=high
+      traefik.frontend.priority: "100"
+      # create password hash with: htpasswd -nb test test | sed 's/\$/\$\$/g'
+      # could not get this to work as .env variable ...
+      traefik.frontend.auth.basic: "test:$$apr1$$Qx5QFQYe$$FNeOVv1mNHaOpPj92PMAS0"
+      traefik.port: "8080"
+    restart: always
+
+
+###################################################################################
+# web
+###################################################################################
+  web:
+    container_name: www
+    image: ziezo/php5-apache
+    volumes:
+    #php.ini (set timezone)
+    - ./web/conf/php.ini:/usr/local/etc/php/php.ini:ro
+    #httpd.conf
+    - ./web/conf/httpd.conf:/etc/apache2/sites-enabled/000-default.conf:ro
+    #main data volume
+    - ./web/vol:/var/www/html
+    #log
+    - ./web/log:/log
+    labels:
+      traefik.backend: "www"
+      traefik.frontend.entryPoints: "http,https"
+      traefik.frontend.rule: "Host:${DOMAIN},www.${DOMAIN}"
+      #1=low, 100=high
+      traefik.frontend.priority: "100"
+      traefik.port: "80"
+    links:
+    - mysql:db
+    - mail:mailserver
+
+
+###################################################################################
+# mysql
+###################################################################################
+  mysql:
+    container_name: mysql
+    image: mysql:5.7
+    labels:
+      traefik.enable: "false"
+    volumes:
+    - ./mysql/vol:/var/lib/mysql
+    environment:
+    - "MYSQL_ROOT_PASSWORD=${DBPW}"
+    restart: always
+
+
+###################################################################################
+# mysql-dump
+###################################################################################
+  mysql-dump:
+    container_name: mysql-dump
+    image: ziezo/mysql-cron-backup
+    volumes:
+    - ./mysql-dump/vol:/backup
+    environment:
+    - "CRON_TIME=15 1 * * *"
+    - "MAX_BACKUPS=0"
+    - "MYSQL_USER=root"
+    - "MYSQL_PASS=${DBPW}"
+    #- "INIT_BACKUP=1"
+    links:
+    - mysql:mysql
+    restart: always
+
+
+###################################################################################
+# phpmyadmin
+###################################################################################
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin/phpmyadmin
+    volumes:
+    - ./phpmyadmin/conf/config.user.inc.php:/etc/phpmyadmin/config.user.inc.php
+    links:
+    - mysql:db
+    labels:
+      traefik.backend: "phpmyadmin"
+      traefik.frontend.rule: "Host:pma.${DOMAIN}"
+      #1=low, 100=high
+      traefik.frontend.priority: "100"
+      traefik.frontend.entryPoints: "http,https"
+      traefik.frontend.headers.SSLRedirect: "true"
+      traefik.port: "80"
+    restart: always
+
+
+###################################################################################
+# nextcloud
+###################################################################################
+  nextcloud:
+    image: nextcloud
+    container_name: nextcloud
+    labels:
+      traefik.backend: "nextcloud"
+      traefik.frontend.rule: "Host:cloud.${DOMAIN}"
+      #1=low, 100=high
+      traefik.frontend.priority: "100"
+      traefik.frontend.entryPoints: "https,http"
+      traefik.frontend.headers.SSLRedirect: "true"
+      traefik.port: "80"
+    volumes:
+     - ./nextcloud/vol:/var/www/html
+    links:
+     - mysql:mysql
+    restart: always
+
+
