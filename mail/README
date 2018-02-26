@@ -1,0 +1,9 @@
+#######################################################
+# log files
+#######################################################
+qpsmptd communication log files:
+/data/log/s6/qpsmtpd/<date>
+
+qpsmptd plugin setup (corresponds to log file [] entries such as [spamassassin] )
+/opt/qpsmtpd/config/plugins
+

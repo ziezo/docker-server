@@ -18,6 +18,7 @@ fi
 #copy files  
 rm -rf try
 cp -rp $SRC try
+rn -rf try/.git
 cp .env try
 
 # Delete all Docker containers and images - Note: error when none exist
